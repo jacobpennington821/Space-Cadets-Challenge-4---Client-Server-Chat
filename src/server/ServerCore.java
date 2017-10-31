@@ -1,6 +1,6 @@
 package server;
 
-public class Core {
+public class ServerCore {
 
 	public static void main(String[] args) {
 		ChatServer server = new ChatServer();

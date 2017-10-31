@@ -9,6 +9,8 @@ import java.io.InputStreamReader;
 import java.net.Socket;
 import java.net.UnknownHostException;
 
+import protocol.ChatProtocol;
+
 public class ChatClient {
 	
 	public int portNumber = 31370;
@@ -17,30 +19,33 @@ public class ChatClient {
 	private DataOutputStream output;
 	private Socket connection;
 	private ClientRecieveThread recieve;
+	private ChatProtocol protocol;
 	
 	public ChatClient() {
 		try {
 			System.out.println("Client Started");
 			connection = new Socket("localhost", portNumber);
 			createStreams();
+			protocol = new ChatProtocol();
+
+			String stringToSend = "";
+			
+			recieve = new ClientRecieveThread();
+			recieve.start();
+			
+			while(!stringToSend.equals("/exit")) {
+				try {
+					stringToSend = protocol.encodeMessage(consoleInput.readLine());
+					output.writeUTF(stringToSend);
+				} catch (IOException e) {
+					System.err.println("Couldn't send message: " + e.getMessage());
+				}
+			}
+		
 		} catch (UnknownHostException e) {
 			System.err.println("Cant find host: " + e.getMessage());
 		} catch (IOException e) {
-			System.err.println("IO error: " + e.getMessage());
-		}
-
-		String stringToSend = "";
-		
-		recieve = new ClientRecieveThread();
-		recieve.start();
-		
-		while(!stringToSend.equals("/exit")) {
-			try {
-				stringToSend = consoleInput.readLine();
-				output.writeUTF(stringToSend);
-			} catch (IOException e) {
-				System.err.println("Couldn't send message: " + e.getMessage());
-			}
+			System.err.println("Connection error: " + e.getMessage());
 		}
 		
 		cleanup();
@@ -67,9 +72,10 @@ public class ChatClient {
 		}
 	}
 	
-	private class ClientRecieveThread extends Thread{
+	public class ClientRecieveThread extends Thread{
 		
 		private DataInputStream recieve;
+		private boolean keepRunning = true;
 
 		public ClientRecieveThread() {
 			
@@ -82,11 +88,12 @@ public class ChatClient {
 				e.printStackTrace();
 			}
 			
-			while(true) {
+			while(keepRunning) {
 				try {
 					System.out.println(recieve.readUTF());
 				} catch (IOException e) {
-					e.printStackTrace();
+					System.err.println("Server Closed: " + e.getMessage());
+					keepRunning = false;
 				}
 			}
 		}
